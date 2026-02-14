@@ -1,65 +1,114 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { Article } from '@/components/Article';
+import { FileUpload } from '@/components/FileUpload';
+import { Section } from '@/lib/file-parser';
+import { articleData as defaultData } from '@/lib/data';
+import { AIConfig } from '@/components/FileUpload';
+
+interface DocumentSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+  _count: { sections: number };
+}
 
 export default function Home() {
+  const [data, setData] = useState<Section[] | null>(null);
+  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [aiConfig, setAiConfig] = useState<AIConfig | undefined>(undefined);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  const fetchDocuments = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch('/api/documents');
+      if (res.ok) {
+        const docs = await res.json();
+        setDocuments(docs);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleLoadDocument = async (id: string) => {
+    try {
+      const res = await fetch(`/api/documents/${id}`);
+      if (res.ok) {
+        const doc = await res.json();
+        setData(doc.sections);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDataLoaded = (sections: Section[], config?: AIConfig) => {
+    setData(sections);
+    if (config) {
+      setAiConfig(config);
+    }
+    fetchDocuments(); // Refresh list after upload
+  };
+
+  const handleUseDemo = () => {
+    setData(defaultData);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="font-[family-name:var(--font-geist-sans)]">
+      {!data ? (
+        <div className="flex flex-col items-center">
+          <FileUpload onDataLoaded={handleDataLoaded} />
+          
+          <div className="mt-8 text-center">
+            <p className="text-gray-500 mb-2">Or just want to see how it works?</p>
+            <button 
+              onClick={handleUseDemo}
+              className="px-6 py-2 bg-white border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm font-medium"
+            >
+              Load Demo Article
+            </button>
+          </div>
+
+          {documents.length > 0 && (
+            <div className="mt-12 w-full max-w-xl">
+              <h2 className="text-xl font-semibold mb-4 text-gray-800">History</h2>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                {documents.map((doc) => (
+                  <div 
+                    key={doc.id}
+                    onClick={() => handleLoadDocument(doc.id)}
+                    className="p-4 hover:bg-gray-50 cursor-pointer transition-colors flex justify-between items-center"
+                  >
+                    <div>
+                      <h3 className="font-medium text-gray-900 truncate max-w-[300px]">{doc.title}</h3>
+                      <p className="text-xs text-gray-500">{new Date(doc.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {doc._count.sections} sections
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <Article 
+          data={data} 
+          onBack={() => setData(null)} 
+          aiConfig={aiConfig}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      )}
     </div>
   );
 }

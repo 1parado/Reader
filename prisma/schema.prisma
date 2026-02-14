@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  engineType = "library"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Document {
+  id        String    @id @default(uuid())
+  title     String
+  type      String    // pdf, docx, etc.
+  createdAt DateTime  @default(now())
+  sections  Section[]
+}
+
+model Section {
+  id         String   @id @default(uuid())
+  content    String
+  sortOrder  Int
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
